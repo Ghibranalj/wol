@@ -8,11 +8,24 @@
 #include <unistd.h>
 
 int server_socket = 0, client_socket = 0;
+struct sockaddr_in dest_addr = {0};
 
 void on_sigint(int sig) {
+
   printf("Caught signal %d\n", sig);
-  close(server_socket);
+  if (close(server_socket) < 0) {
+    perror("can't close server socket");
+    exit(EXIT_FAILURE);
+  }
   exit(EXIT_SUCCESS);
+}
+
+int mac_string_to_binary(const char *mac_str, unsigned char *mac_bin) {
+  if (sscanf(mac_str, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &mac_bin[0], &mac_bin[1],
+             &mac_bin[2], &mac_bin[3], &mac_bin[4], &mac_bin[5]) != 6) {
+    return -1;
+  }
+  return 0;
 }
 
 int main(int argc, char *argv[]) {
@@ -26,13 +39,6 @@ int main(int argc, char *argv[]) {
     }
     addr = argv[1];
   }
-
-  // TODO: use raw sockets to send the magic packet
-  char cmd[100] = {0};
-  strcpy(cmd, "wol ");
-  strncat(cmd, addr, 17);
-
-  printf("will run \"%s\" command\n", cmd);
 
   if (argc > 2) {
     port = strtoul(argv[2], NULL, 10);
@@ -56,9 +62,15 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
   }
 
+  unsigned char mac_address[6];
+  if (mac_string_to_binary(addr, mac_address) == -1) {
+    fprintf(stderr, "Invalid MAC address format\n");
+    exit(EXIT_FAILURE);
+  }
+
   struct sockaddr_in server_addr, client_addr;
   socklen_t client_addr_len = sizeof(client_addr);
-  char buffer[1024] = {0};
+  char buffer[144] = {0};
 
   // Create a socket
   server_socket = socket(AF_INET, SOCK_STREAM, 0);
@@ -87,6 +99,17 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
   }
 
+  dest_addr.sin_family = AF_INET;
+  dest_addr.sin_port = htons(40000);
+  dest_addr.sin_addr.s_addr = INADDR_BROADCAST;
+
+  for (int i = 0; i < 6; i++) {
+    buffer[i] = 0xFF;
+  }
+  for (int i = 0; i < 16; i++) {
+    memcpy(buffer + (i * 6) + 6, mac_address, 6);
+  }
+
   printf("Server listening on port %d, sending to mac %s...\n", port, addr);
 
   // Accept incoming connections and handle data
@@ -98,24 +121,57 @@ int main(int argc, char *argv[]) {
       continue;
     }
 
-    FILE *f = popen(cmd, "r");
-    if (f == NULL) {
-      perror("Error opening command");
+    printf("Client connected from %s\n", inet_ntoa(client_addr.sin_addr));
+
+    client_socket = socket(AF_INET, SOCK_DGRAM, 0);
+    if (client_socket == -1) {
+      perror("can't create client socket");
+      continue;
+    }
+
+    struct linger lin = {.l_onoff = 0, .l_linger = 0};
+    if (setsockopt(client_socket, SOL_SOCKET, SO_LINGER, &lin, sizeof(lin))) {
+      perror("setsockopt(SO_LINGER) failed");
       close(client_socket);
       continue;
     }
 
-    // Read the output of the command
-    while (fgets(buffer, sizeof(buffer), f) != NULL) {
-      printf("%s", buffer);
-      send(client_socket, buffer, strlen(buffer), 0);
-    }
-
-    if (pclose(f) == -1) {
-      perror("Error executing command");
+    int yes = 1;
+    if (setsockopt(client_socket, SOL_SOCKET, SO_BROADCAST, &yes,
+                   sizeof(yes))) {
+      perror("setsockopt(SO_BROADCAST) failed");
       close(client_socket);
       continue;
     }
+
+    if (setsockopt(client_socket, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) <
+        0) {
+      perror("setsockopt(SO_REUSEADDR) failed");
+      close(client_socket);
+      continue;
+    }
+
+    if (setsockopt(client_socket, SOL_SOCKET, SO_REUSEPORT, &yes, sizeof(yes)) <
+        0) {
+      perror("setsockopt(SO_REUSEPORT) failed");
+      close(client_socket);
+      continue;
+    }
+
+    if (setsockopt(client_socket, SOL_SOCKET, SO_BROADCAST, &yes,
+                   sizeof(yes))) {
+      perror("setsockopt(SO_BROADCAST) failed");
+      close(client_socket);
+      continue;
+    }
+
+    if (sendto(client_socket, buffer, sizeof(buffer), 0,
+               (struct sockaddr *)&dest_addr, sizeof(dest_addr)) == -1) {
+      perror("sendto failed");
+      close(client_socket);
+      continue;
+    }
+
     // Close the client socket
     close(client_socket);
     printf("Client disconnected\n");
