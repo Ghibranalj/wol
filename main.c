@@ -72,19 +72,16 @@ int main(int argc, char *argv[]) {
   socklen_t client_addr_len = sizeof(client_addr);
   char buffer[144] = {0};
 
-  // Create a socket
   server_socket = socket(AF_INET, SOCK_STREAM, 0);
   if (server_socket == -1) {
     perror("Socket creation failed");
     exit(EXIT_FAILURE);
   }
 
-  // Configure server address structure
   server_addr.sin_family = AF_INET;
   server_addr.sin_port = htons(port); // Port number
   server_addr.sin_addr.s_addr = INADDR_ANY;
 
-  // Bind the socket to the specified IP address and port
   if (bind(server_socket, (struct sockaddr *)&server_addr,
            sizeof(server_addr)) < 0) {
     perror("Binding failed");
@@ -92,7 +89,6 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
   }
 
-  // Listen for incoming connections
   if (listen(server_socket, 5) < 0) {
     perror("Listening failed");
     close(server_socket);
@@ -110,9 +106,8 @@ int main(int argc, char *argv[]) {
     memcpy(buffer + (i * 6) + 6, mac_address, 6);
   }
 
-  printf("Server listening on port %d, sending to mac %s...\n", port, addr);
+  printf("Server listening on port %d. Will send to %s...\n", port, addr);
 
-  // Accept incoming connections and handle data
   while (1) {
     client_socket = accept(server_socket, (struct sockaddr *)&client_addr,
                            &client_addr_len);
@@ -121,7 +116,8 @@ int main(int argc, char *argv[]) {
       continue;
     }
 
-    printf("Client connected from %s\n", inet_ntoa(client_addr.sin_addr));
+    printf("Client connected from %s:%d\n", inet_ntoa(client_addr.sin_addr),
+           client_addr.sin_port);
 
     client_socket = socket(AF_INET, SOCK_DGRAM, 0);
     if (client_socket == -1) {
@@ -165,6 +161,7 @@ int main(int argc, char *argv[]) {
       continue;
     }
 
+    printf("Sending magic packet to %s\n", addr);
     if (sendto(client_socket, buffer, sizeof(buffer), 0,
                (struct sockaddr *)&dest_addr, sizeof(dest_addr)) == -1) {
       perror("sendto failed");
@@ -172,12 +169,10 @@ int main(int argc, char *argv[]) {
       continue;
     }
 
-    // Close the client socket
     close(client_socket);
     printf("Client disconnected\n");
   }
 
-  // Close the server socket
   close(server_socket);
 
   return 0;
