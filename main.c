@@ -82,6 +82,34 @@ int main(int argc, char *argv[]) {
   server_addr.sin_port = htons(port); // Port number
   server_addr.sin_addr.s_addr = INADDR_ANY;
 
+  struct linger lin = {.l_onoff = 0, .l_linger = 0};
+  if (setsockopt(server_socket, SOL_SOCKET, SO_LINGER, &lin, sizeof(lin))) {
+    perror("setsockopt(SO_LINGER) failed");
+    close(server_socket);
+    exit(EXIT_FAILURE);
+  }
+
+  int yes = 1;
+  if (setsockopt(server_socket, SOL_SOCKET, SO_BROADCAST, &yes, sizeof(yes))) {
+    perror("setsockopt(SO_BROADCAST) failed");
+    close(server_socket);
+    exit(EXIT_FAILURE);
+  }
+
+  if (setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) <
+      0) {
+    perror("setsockopt(SO_REUSEADDR) failed");
+    close(server_socket);
+    exit(EXIT_FAILURE);
+  }
+
+  if (setsockopt(server_socket, SOL_SOCKET, SO_REUSEPORT, &yes, sizeof(yes)) <
+      0) {
+    perror("setsockopt(SO_REUSEPORT) failed");
+    close(server_socket);
+    exit(EXIT_FAILURE);
+  }
+
   if (bind(server_socket, (struct sockaddr *)&server_addr,
            sizeof(server_addr)) < 0) {
     perror("Binding failed");
@@ -122,42 +150,6 @@ int main(int argc, char *argv[]) {
     client_socket = socket(AF_INET, SOCK_DGRAM, 0);
     if (client_socket == -1) {
       perror("can't create client socket");
-      continue;
-    }
-
-    struct linger lin = {.l_onoff = 0, .l_linger = 0};
-    if (setsockopt(client_socket, SOL_SOCKET, SO_LINGER, &lin, sizeof(lin))) {
-      perror("setsockopt(SO_LINGER) failed");
-      close(client_socket);
-      continue;
-    }
-
-    int yes = 1;
-    if (setsockopt(client_socket, SOL_SOCKET, SO_BROADCAST, &yes,
-                   sizeof(yes))) {
-      perror("setsockopt(SO_BROADCAST) failed");
-      close(client_socket);
-      continue;
-    }
-
-    if (setsockopt(client_socket, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) <
-        0) {
-      perror("setsockopt(SO_REUSEADDR) failed");
-      close(client_socket);
-      continue;
-    }
-
-    if (setsockopt(client_socket, SOL_SOCKET, SO_REUSEPORT, &yes, sizeof(yes)) <
-        0) {
-      perror("setsockopt(SO_REUSEPORT) failed");
-      close(client_socket);
-      continue;
-    }
-
-    if (setsockopt(client_socket, SOL_SOCKET, SO_BROADCAST, &yes,
-                   sizeof(yes))) {
-      perror("setsockopt(SO_BROADCAST) failed");
-      close(client_socket);
       continue;
     }
 
