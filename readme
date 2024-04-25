@@ -1,0 +1,6 @@
+
+Compile:
+    gcc main.c -o wol
+
+Usage:
+    ./wol {MAC_ADDRESS} {LISTEN_PORT}
