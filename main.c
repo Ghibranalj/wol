@@ -159,6 +159,12 @@ int main(int argc, char *argv[]) {
       continue;
     }
 
+    int broadcast = 1;
+    if (setsockopt(client_socket, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast)) < 0) {
+        perror("setsockopt (SO_BROADCAST)");
+        exit(1);
+    }
+
     printf("Sending magic packet to %s\n", addr);
     if (sendto(client_socket, buffer, sizeof(buffer), 0,
                (struct sockaddr *)&dest_addr, sizeof(dest_addr)) == -1) {
