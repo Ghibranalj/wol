@@ -11,9 +11,14 @@ RUN apt-get update && apt-get install -y gcc
 COPY main.c /app
 
 # Compile the C program to a binary named 'program'
-RUN gcc main.c -o wol
+RUN gcc -D DOCKER=true main.c -o wol
 
 ENV MAC_ADDRESS="a8:a1:59:e8:b3:16"
 ENV LISTEN_PORT="5431"
+
+expose $LISTEN_PORT
+
+
+
 # Command to run the compiled binary
-CMD ["sh", "-c", "./program $MAC_ADDRESS $LISTEN_PORT"]
+CMD ["bash", "-c", "./wol $MAC_ADDRESS $LISTEN_PORT"]

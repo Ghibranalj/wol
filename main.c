@@ -29,6 +29,12 @@ int mac_string_to_binary(const char *mac_str, unsigned char *mac_bin) {
 }
 
 int main(int argc, char *argv[]) {
+// Disable buffering for stdout inside docker so that stdout outputs properly
+#ifdef DOCKER
+  setbuf(stdout, NULL);
+  setbuf(stderr, NULL);
+#endif
+
   char *addr = "a8:a1:59:e8:b3:16";
   int port = 54321;
 
