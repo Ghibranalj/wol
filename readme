@@ -4,3 +4,11 @@ Compile:
 
 Usage:
     ./wol {MAC_ADDRESS} {LISTEN_PORT}
+
+
+Docker cross compile:
+      ./buildx.sh setup
+      ./buildx.sh push # then you will be prompted for your docker username and password
+
+Run docker:
+    docker run -e MAC_ADDRESS="a8:a1:59:e8:b3:16" -e LISTEN_PORT="5431" username/wol:latest
