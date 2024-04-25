@@ -18,9 +18,9 @@ fi
 if [ "$ACTION" = "push" ]; then
     printf "Enter your dockerhub username: "
     read DOCKER_USERNAME
-    printf "Enter your docker image name: "
-    read DOCKER_IMAGE_NAME
-    docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t $DOCKER_USERNAME/$DOCKER_IMAGE_NAME:latest --push .
+    docker login -u $DOCKER_USERNAME
+
+    docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t $DOCKER_USERNAME/wol:latest --push .
     exit 0
 fi
 
